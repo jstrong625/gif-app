@@ -11,67 +11,84 @@ function getApiKey() {
   return apiKey;
 }
 
-// Text-to-image: generate from prompt only
-async function generateExplicitImage(prompt) {
-  const apiKey = getApiKey();
-  const fullPrompt = `${prompt}, explicit, NSFW, nude, photorealistic, high quality, sharp focus, professional photography, 8k`;
-
-  const response = await axios.post(
-    'https://api.novita.ai/v3/sync/txt2img',
-    {
-      model_name: MODEL,
-      prompt: fullPrompt,
-      negative_prompt: NEGATIVE_PROMPT,
-      width: 512,
-      height: 768,
-      sampler_name: 'DPM++ 2M Karras',
-      cfg_scale: 7,
-      steps: 30,
-      batch_size: 1,
-      n_iter: 1,
-    },
-    {
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 120000,
-    }
-  );
-
-  const base64 = response.data.data.imgs_bytes?.[0] || response.data.data.images?.[0];
-  if (!base64) throw new Error('No image returned from NovitaAI');
-  return Buffer.from(base64, 'base64');
+function headers() {
+  return { Authorization: `Bearer ${getApiKey()}`, 'Content-Type': 'application/json' };
 }
 
-// Image-to-image: transform an uploaded photo using a prompt
+async function pollResult(taskId) {
+  const maxAttempts = 60;
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const res = await axios.get(
+      `https://api.novita.ai/v3/async/task-result?task_id=${taskId}`,
+      { headers: headers(), timeout: 15000 }
+    );
+    const { status, images } = res.data;
+    if (status === 'TASK_STATUS_SUCCEED' && images?.length) {
+      const imageUrl = images[0].image_url || images[0].url;
+      const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 30000 });
+      return Buffer.from(imgRes.data);
+    }
+    if (status === 'TASK_STATUS_FAILED') {
+      throw new Error('NovitaAI generation failed');
+    }
+  }
+  throw new Error('NovitaAI timed out');
+}
+
+async function generateExplicitImage(prompt) {
+  const fullPrompt = `${prompt}, explicit, NSFW, nude, photorealistic, high quality, sharp focus, 8k`;
+
+  const res = await axios.post(
+    'https://api.novita.ai/v3/async/txt2img',
+    {
+      extra: { response_image_type: 'png' },
+      request: {
+        model_name: MODEL,
+        prompt: fullPrompt,
+        negative_prompt: NEGATIVE_PROMPT,
+        width: 512,
+        height: 768,
+        image_num: 1,
+        steps: 30,
+        seed: -1,
+        guidance_scale: 7,
+        sampler_name: 'DPM++ 2M Karras',
+      },
+    },
+    { headers: headers(), timeout: 30000 }
+  );
+
+  return pollResult(res.data.task_id);
+}
+
 async function transformExplicitImage(imageBuffer, prompt) {
-  const apiKey = getApiKey();
   const imageBase64 = imageBuffer.toString('base64');
   const fullPrompt = `${prompt}, explicit, NSFW, nude, photorealistic, high quality, sharp focus, 8k`;
 
-  const response = await axios.post(
-    'https://api.novita.ai/v3/sync/img2img',
+  const res = await axios.post(
+    'https://api.novita.ai/v3/async/img2img',
     {
-      model_name: MODEL,
-      prompt: fullPrompt,
-      negative_prompt: NEGATIVE_PROMPT,
-      image_base64: imageBase64,
-      strength: 0.75,        // how much to change the image (0=keep original, 1=ignore original)
-      width: 512,
-      height: 768,
-      sampler_name: 'DPM++ 2M Karras',
-      cfg_scale: 7,
-      steps: 30,
-      batch_size: 1,
-      n_iter: 1,
+      extra: { response_image_type: 'png' },
+      request: {
+        model_name: MODEL,
+        prompt: fullPrompt,
+        negative_prompt: NEGATIVE_PROMPT,
+        image_base64: [imageBase64],
+        strength: 0.75,
+        width: 512,
+        height: 768,
+        image_num: 1,
+        steps: 30,
+        seed: -1,
+        guidance_scale: 7,
+        sampler_name: 'DPM++ 2M Karras',
+      },
     },
-    {
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 120000,
-    }
+    { headers: headers(), timeout: 30000 }
   );
 
-  const base64 = response.data.data.imgs_bytes?.[0] || response.data.data.images?.[0];
-  if (!base64) throw new Error('No image returned from NovitaAI');
-  return Buffer.from(base64, 'base64');
+  return pollResult(res.data.task_id);
 }
 
 module.exports = { generateExplicitImage, transformExplicitImage };
