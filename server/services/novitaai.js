@@ -2,7 +2,9 @@ const axios = require('axios');
 
 const MODEL_ADULT = 'realisticVisionV51_v51VAE.safetensors';
 const MODEL_EXPLICIT = 'epicrealism_naturalSinRC1VAE.safetensors';
-const NEGATIVE_PROMPT = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts, clothes, clothed, dressed, bikini, underwear, bra, panties';
+
+const NEGATIVE_SFW = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts';
+const NEGATIVE_ADULT = NEGATIVE_SFW + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
 
 function getApiKey() {
   const apiKey = process.env.NOVITA_API_KEY;
@@ -39,7 +41,7 @@ async function txt2img(prompt, contentLevel) {
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
     prompt: `${prompt}${tag}, photorealistic, high quality, 8k`,
-    negative_prompt: NEGATIVE_PROMPT,
+    negative_prompt: NEGATIVE_ADULT,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',
   };
@@ -51,18 +53,34 @@ async function txt2img(prompt, contentLevel) {
 }
 
 async function img2img(imageBuffer, prompt, contentLevel) {
+  const isSfw = contentLevel === 'sfw';
   const isExplicit = contentLevel === 'explicit';
-  const tag = isExplicit ? ', fully nude, naked, no clothes, NSFW, explicit' : ', sensual, suggestive, tasteful nudity';
+  let tag, negativePrompt, denoisingStrength;
+
+  if (isSfw) {
+    tag = ', artistic, clothed, natural lighting, high quality, 8k';
+    negativePrompt = NEGATIVE_SFW;
+    denoisingStrength = 0.65;
+  } else if (isExplicit) {
+    tag = ', fully nude, naked, no clothes, NSFW, explicit';
+    negativePrompt = NEGATIVE_ADULT;
+    denoisingStrength = 0.95;
+  } else {
+    tag = ', sensual, suggestive, tasteful nudity';
+    negativePrompt = NEGATIVE_ADULT;
+    denoisingStrength = 0.75;
+  }
+
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
     prompt: `${prompt}${tag}, photorealistic, high quality, 8k`,
-    negative_prompt: NEGATIVE_PROMPT,
+    negative_prompt: negativePrompt,
     image_base64: imageBuffer.toString('base64'),
-    denoising_strength: isExplicit ? 0.95 : 0.75,
+    denoising_strength: denoisingStrength,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',
   };
-  console.log('img2img submitting, model:', body.model_name, 'denoising_strength:', body.denoising_strength);
+  console.log('img2img submitting, contentLevel:', contentLevel, 'model:', body.model_name, 'denoising_strength:', denoisingStrength);
   const res = await axios.post('https://api.novita.ai/v3/async/img2img', body, {
     headers: authHeaders(), timeout: 30000,
   }).catch((e) => { throw new Error('NovitaAI img2img: ' + (e.response?.data ? JSON.stringify(e.response.data) : e.message)); });

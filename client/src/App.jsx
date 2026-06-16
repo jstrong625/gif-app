@@ -16,22 +16,12 @@ export default function App() {
     setCurrentMode(mode);
 
     try {
-      let body;
-      let headers = {};
-
+      let imageBase64 = null;
       if (image) {
-        const fd = new FormData();
-        fd.append('image', image);
-        fd.append('prompt', prompt);
-        fd.append('mode', mode);
-        fd.append('topText', topText);
-        fd.append('bottomText', bottomText);
-        fd.append('contentLevel', contentLevel);
-        body = fd;
-      } else {
-        headers['Content-Type'] = 'application/json';
-        body = JSON.stringify({ prompt, mode, topText, bottomText, contentLevel });
+        imageBase64 = await fileToBase64(image);
       }
+      const headers = { 'Content-Type': 'application/json' };
+      const body = JSON.stringify({ prompt, mode, topText, bottomText, contentLevel, imageBase64 });
 
       const res = await fetch('/api/generate', { method: 'POST', headers, body });
 
@@ -56,6 +46,15 @@ export default function App() {
       reader.onload = () => resolve(reader.result.split(',')[1]);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
+    });
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   }
 
