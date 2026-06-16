@@ -39,9 +39,13 @@ async function pollResult(taskId) {
 async function txt2img(prompt, contentLevel) {
   const isExplicit = contentLevel === 'explicit';
   const tag = isExplicit ? ', fully nude, naked, no clothes, NSFW' : ', sensual, suggestive, tasteful nudity';
+  // Short prompts like "vagina" get rejected by NovitaAI — add context to reach minimum viable length
+  const enriched = prompt.trim().split(' ').length < 4
+    ? `beautiful woman, ${prompt}, close up, detailed`
+    : prompt;
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
-    prompt: `${prompt}${tag}, high quality`,
+    prompt: `${enriched}${tag}, high quality`,
     negative_prompt: NEGATIVE_CLOTHES,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',

@@ -28,6 +28,22 @@ async function generateImage(prompt, frameIndex = 0, contentLevel = 'sfw') {
   return Buffer.from(response.data);
 }
 
+async function generateCartoon(prompt, contentLevel = 'sfw') {
+  const isAdult = contentLevel !== 'sfw';
+  const styleTag = 'cartoon, comic art, colorful illustration, funny, exaggerated, animated style, bold outlines, vibrant colors';
+  const adultTag = isAdult ? ', adult cartoon, NSFW, explicit cartoon, uncensored' : '';
+  const fullPrompt = `${prompt}, ${styleTag}${adultTag}`;
+
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=768&height=768&nologo=true&seed=${Date.now()}&safe=false&model=flux&enhance=true`;
+
+  const response = await axios.get(url, {
+    responseType: 'arraybuffer',
+    timeout: 120000,
+  });
+
+  return Buffer.from(response.data);
+}
+
 async function generateFrames(prompt, frameCount = 4, contentLevel = 'sfw') {
   const frames = [];
   for (let i = 0; i < frameCount; i++) {
@@ -37,4 +53,4 @@ async function generateFrames(prompt, frameCount = 4, contentLevel = 'sfw') {
   return frames;
 }
 
-module.exports = { generateImage, generateFrames };
+module.exports = { generateImage, generateCartoon, generateFrames };

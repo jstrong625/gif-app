@@ -12,6 +12,7 @@ export default function PromptForm({ onGenerate, loading }) {
   const [topText, setTopText] = useState('');
   const [bottomText, setBottomText] = useState('');
   const [contentLevel, setContentLevel] = useState('sfw');
+  const [style, setStyle] = useState('realistic');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [dragging, setDragging] = useState(false);
@@ -38,7 +39,7 @@ export default function PromptForm({ onGenerate, loading }) {
   function handleSubmit(e) {
     e.preventDefault();
     if (!prompt.trim() && !image) return;
-    onGenerate({ prompt: prompt.trim(), mode, topText, bottomText, contentLevel, image });
+    onGenerate({ prompt: prompt.trim(), mode, topText, bottomText, contentLevel, style, image });
   }
 
   const promptRequired = !image;
@@ -54,6 +55,20 @@ export default function PromptForm({ onGenerate, loading }) {
             {m === 'gif' ? 'Animated GIF' : 'Meme'}
           </button>
         ))}
+      </div>
+
+      {/* Style toggle */}
+      <div className="flex flex-col gap-2">
+        <label className="text-sm text-gray-400">Style</label>
+        <div className="flex rounded-lg overflow-hidden border border-white/15 w-full">
+          {[['realistic', 'Realistic'], ['cartoon', 'Cartoon']].map(([val, lbl]) => (
+            <button key={val} type="button" onClick={() => setStyle(val)}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${
+                style === val ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}>
+              {lbl}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content level */}

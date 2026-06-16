@@ -9,7 +9,7 @@ export default function App() {
   const [currentMode, setCurrentMode] = useState('gif');
   const [error, setError] = useState(null);
 
-  async function handleGenerate({ prompt, mode, topText, bottomText, contentLevel, image }) {
+  async function handleGenerate({ prompt, mode, topText, bottomText, contentLevel, style, image }) {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -21,7 +21,7 @@ export default function App() {
         imageBase64 = await fileToBase64(image);
       }
       const headers = { 'Content-Type': 'application/json' };
-      const body = JSON.stringify({ prompt, mode, topText, bottomText, contentLevel, imageBase64 });
+      const body = JSON.stringify({ prompt, mode, topText, bottomText, contentLevel, style, imageBase64 });
 
       const res = await fetch('/api/generate', { method: 'POST', headers, body });
 
