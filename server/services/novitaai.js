@@ -3,8 +3,9 @@ const axios = require('axios');
 const MODEL_ADULT = 'realisticVisionV51_v51VAE.safetensors';
 const MODEL_EXPLICIT = 'epicrealism_naturalSinRC1VAE.safetensors';
 
-const NEGATIVE_SFW = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts';
-const NEGATIVE_ADULT = NEGATIVE_SFW + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
+const NEGATIVE_BASE = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts, cartoon, anime, illustration, drawing, painting, art style, cgi, 3d render';
+const NEGATIVE_SFW = NEGATIVE_BASE;
+const NEGATIVE_ADULT = NEGATIVE_BASE + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
 
 function getApiKey() {
   const apiKey = process.env.NOVITA_API_KEY;
@@ -58,22 +59,22 @@ async function img2img(imageBuffer, prompt, contentLevel) {
   let tag, negativePrompt, denoisingStrength;
 
   if (isSfw) {
-    tag = ', artistic, clothed, natural lighting, high quality, 8k';
+    tag = ', same person, same pose, same background, natural lighting, photorealistic';
     negativePrompt = NEGATIVE_SFW;
-    denoisingStrength = 0.65;
+    denoisingStrength = 0.5;
   } else if (isExplicit) {
-    tag = ', fully nude, naked, no clothes, NSFW, explicit';
+    tag = ', nude, naked, no clothes, bare skin, same face, same pose, same background, photorealistic, NSFW';
     negativePrompt = NEGATIVE_ADULT;
-    denoisingStrength = 0.95;
+    denoisingStrength = 0.5;
   } else {
-    tag = ', sensual, suggestive, tasteful nudity';
+    tag = ', topless, nude, same face, same pose, same background, tasteful, photorealistic';
     negativePrompt = NEGATIVE_ADULT;
-    denoisingStrength = 0.75;
+    denoisingStrength = 0.45;
   }
 
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
-    prompt: `${prompt}${tag}, photorealistic, high quality, 8k`,
+    prompt: `${prompt}${tag}`,
     negative_prompt: negativePrompt,
     image_base64: imageBuffer.toString('base64'),
     denoising_strength: denoisingStrength,
