@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { generateImage, generateCartoon } = require('../services/pollinations');
-const { txt2img, img2img } = require('../services/novitaai');
+const { generateImage } = require('../services/pollinations');
+const { txt2img, cartoonTxt2img, img2img } = require('../services/novitaai');
 const { animateImage, addMemeText } = require('../services/gifmaker');
 
 async function getBaseImage(prompt, contentLevel, style, uploadedBuffer) {
@@ -19,7 +19,7 @@ async function getBaseImage(prompt, contentLevel, style, uploadedBuffer) {
 
   // Text-only generation
   if (isCartoon) {
-    return generateCartoon(prompt, contentLevel);
+    return cartoonTxt2img(prompt, contentLevel);
   }
 
   const needsNovita = contentLevel === 'adult' || contentLevel === 'explicit';

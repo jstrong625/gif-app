@@ -2,10 +2,11 @@ const axios = require('axios');
 
 const MODEL_ADULT = 'realisticVisionV51_v51VAE.safetensors';
 const MODEL_EXPLICIT = 'epicrealism_naturalSinRC1VAE.safetensors';
+const MODEL_CARTOON = 'dreamshaper_8.safetensors';
 
-// Basic quality negatives only — no style words so the input image's style is preserved
 const NEGATIVE_QUALITY = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts';
 const NEGATIVE_CLOTHES = NEGATIVE_QUALITY + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
+const NEGATIVE_CARTOON = 'ugly, deformed, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, low quality, realistic, photograph, 3d render';
 
 function getApiKey() {
   const apiKey = process.env.NOVITA_API_KEY;
@@ -39,7 +40,6 @@ async function pollResult(taskId) {
 async function txt2img(prompt, contentLevel) {
   const isExplicit = contentLevel === 'explicit';
   const tag = isExplicit ? ', fully nude, naked, no clothes, NSFW' : ', sensual, suggestive, tasteful nudity';
-  // Short prompts like "vagina" get rejected by NovitaAI — add context to reach minimum viable length
   const enriched = prompt.trim().split(' ').length < 4
     ? `beautiful woman, ${prompt}, close up, detailed`
     : prompt;
@@ -57,11 +57,28 @@ async function txt2img(prompt, contentLevel) {
   return pollResult(res.data.task_id);
 }
 
+async function cartoonTxt2img(prompt, contentLevel) {
+  const isExplicit = contentLevel !== 'sfw';
+  const nsfwTag = isExplicit ? ', explicit, NSFW, adult content' : '';
+  const body = {
+    model_name: MODEL_CARTOON,
+    prompt: `(cartoon:1.4), (illustration:1.3), (comic book art:1.2), colorful, bold outlines, funny, exaggerated, ${prompt}${nsfwTag}, masterpiece, best quality`,
+    negative_prompt: NEGATIVE_CARTOON,
+    width: 512, height: 768, image_num: 1, steps: 30,
+    seed: -1, guidance_scale: 7.5, sampler_name: 'DPM++ 2M Karras',
+  };
+  console.log('cartoonTxt2img submitting, prompt:', body.prompt.slice(0, 100));
+  const res = await axios.post('https://api.novita.ai/v3/async/txt2img', body, {
+    headers: authHeaders(), timeout: 30000,
+  }).catch((e) => { throw new Error('NovitaAI cartoon: ' + (e.response?.data ? JSON.stringify(e.response.data) : e.message)); });
+  console.log('cartoon submitted, task_id:', res.data.task_id);
+  return pollResult(res.data.task_id);
+}
+
 async function img2img(imageBuffer, prompt, contentLevel) {
   const isSfw = contentLevel === 'sfw';
   const isExplicit = contentLevel === 'explicit';
 
-  // For img2img: only add nudity tags, never add style words that would override the input image's look
   let nudityTag, negativePrompt;
   if (isSfw) {
     nudityTag = '';
@@ -91,4 +108,4 @@ async function img2img(imageBuffer, prompt, contentLevel) {
   return pollResult(res.data.task_id);
 }
 
-module.exports = { txt2img, img2img };
+module.exports = { txt2img, cartoonTxt2img, img2img };
