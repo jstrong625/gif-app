@@ -2,11 +2,20 @@
   "name": "gif-app",
   "version": "1.0.0",
   "scripts": {
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "node server/index.js",
-    "client": "cd client && npm run dev",
+    "dev": "concurrently \"node server/index.js\" \"cd client && npm run dev\"",
     "build": "cd client && npm install && npm run build",
     "start": "node server/index.js"
+  },
+  "dependencies": {
+    "@jimp/plugin-print": "^1.6.1",
+    "axios": "^1.18.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "gifencoder": "^2.0.1",
+    "jimp": "^1.6.1",
+    "jimp-compact": "^0.16.1-2",
+    "multer": "^2.2.0"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
