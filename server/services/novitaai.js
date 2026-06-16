@@ -3,9 +3,9 @@ const axios = require('axios');
 const MODEL_ADULT = 'realisticVisionV51_v51VAE.safetensors';
 const MODEL_EXPLICIT = 'epicrealism_naturalSinRC1VAE.safetensors';
 
-const NEGATIVE_BASE = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts, cartoon, anime, illustration, drawing, painting, art style, cgi, 3d render';
-const NEGATIVE_SFW = NEGATIVE_BASE;
-const NEGATIVE_ADULT = NEGATIVE_BASE + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
+// Basic quality negatives only — no style words so the input image's style is preserved
+const NEGATIVE_QUALITY = 'ugly, deformed, blurry, bad anatomy, bad hands, missing fingers, extra limbs, watermark, text, logo, cropped, low quality, jpeg artifacts';
+const NEGATIVE_CLOTHES = NEGATIVE_QUALITY + ', clothes, clothed, dressed, bikini, underwear, bra, panties';
 
 function getApiKey() {
   const apiKey = process.env.NOVITA_API_KEY;
@@ -38,11 +38,11 @@ async function pollResult(taskId) {
 
 async function txt2img(prompt, contentLevel) {
   const isExplicit = contentLevel === 'explicit';
-  const tag = isExplicit ? ', fully nude, naked, no clothes, NSFW, explicit' : ', sensual, suggestive, tasteful nudity';
+  const tag = isExplicit ? ', fully nude, naked, no clothes, NSFW' : ', sensual, suggestive, tasteful nudity';
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
-    prompt: `${prompt}${tag}, photorealistic, high quality, 8k`,
-    negative_prompt: NEGATIVE_ADULT,
+    prompt: `${prompt}${tag}, high quality`,
+    negative_prompt: NEGATIVE_CLOTHES,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',
   };
@@ -56,32 +56,30 @@ async function txt2img(prompt, contentLevel) {
 async function img2img(imageBuffer, prompt, contentLevel) {
   const isSfw = contentLevel === 'sfw';
   const isExplicit = contentLevel === 'explicit';
-  let tag, negativePrompt, denoisingStrength;
 
+  // For img2img: only add nudity tags, never add style words that would override the input image's look
+  let nudityTag, negativePrompt;
   if (isSfw) {
-    tag = ', same person, same pose, same background, natural lighting, photorealistic';
-    negativePrompt = NEGATIVE_SFW;
-    denoisingStrength = 0.5;
+    nudityTag = '';
+    negativePrompt = NEGATIVE_QUALITY;
   } else if (isExplicit) {
-    tag = ', nude, naked, no clothes, bare skin, same face, same pose, same background, photorealistic, NSFW';
-    negativePrompt = NEGATIVE_ADULT;
-    denoisingStrength = 0.5;
+    nudityTag = ', nude, naked, no clothes, NSFW';
+    negativePrompt = NEGATIVE_CLOTHES;
   } else {
-    tag = ', topless, nude, same face, same pose, same background, tasteful, photorealistic';
-    negativePrompt = NEGATIVE_ADULT;
-    denoisingStrength = 0.45;
+    nudityTag = ', topless, no top, nude';
+    negativePrompt = NEGATIVE_CLOTHES;
   }
 
   const body = {
     model_name: isExplicit ? MODEL_EXPLICIT : MODEL_ADULT,
-    prompt: `${prompt}${tag}`,
+    prompt: `${prompt}${nudityTag}`,
     negative_prompt: negativePrompt,
     image_base64: imageBuffer.toString('base64'),
-    denoising_strength: denoisingStrength,
+    denoising_strength: 0.5,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',
   };
-  console.log('img2img submitting, contentLevel:', contentLevel, 'model:', body.model_name, 'denoising_strength:', denoisingStrength);
+  console.log('img2img submitting, contentLevel:', contentLevel, 'prompt:', body.prompt);
   const res = await axios.post('https://api.novita.ai/v3/async/img2img', body, {
     headers: authHeaders(), timeout: 30000,
   }).catch((e) => { throw new Error('NovitaAI img2img: ' + (e.response?.data ? JSON.stringify(e.response.data) : e.message)); });
