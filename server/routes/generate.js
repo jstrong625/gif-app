@@ -2,32 +2,29 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const { generateImage } = require('../services/pollinations');
-const { generateExplicitImage, transformExplicitImage } = require('../services/novitaai');
+const { txt2img, img2img } = require('../services/novitaai');
 const { animateImage, addMemeText } = require('../services/gifmaker');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 async function getBaseImage(prompt, contentLevel, uploadedBuffer) {
   const hasPrompt = prompt && prompt.trim();
+  const needsNovita = contentLevel === 'adult' || contentLevel === 'explicit';
 
   if (uploadedBuffer && hasPrompt) {
-    // Image + prompt: use AI to transform the uploaded image
-    if (contentLevel === 'explicit') {
-      return transformExplicitImage(uploadedBuffer, prompt);
-    }
-    // For SFW/adult with uploaded image + prompt, use Pollinations img variation
+    // Image + prompt: transform the photo with AI
+    if (needsNovita) return img2img(uploadedBuffer, prompt, contentLevel);
+    // SFW with image + prompt: generate fresh from prompt (Pollinations doesn't do img2img)
     return generateImage(prompt, 0, contentLevel);
   }
 
   if (uploadedBuffer) {
-    // Image only, no prompt: just animate/use as-is
+    // Image only, no prompt: animate as-is
     return uploadedBuffer;
   }
 
-  // No image, prompt only: generate from scratch
-  if (contentLevel === 'explicit') {
-    return generateExplicitImage(prompt);
-  }
+  // No image: generate from text
+  if (needsNovita) return txt2img(prompt, contentLevel);
   return generateImage(prompt, 0, contentLevel);
 }
 
