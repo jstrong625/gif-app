@@ -58,11 +58,11 @@ async function img2img(imageBuffer, prompt, contentLevel) {
     prompt: `${prompt}${tag}, photorealistic, high quality, 8k`,
     negative_prompt: NEGATIVE_PROMPT,
     image_base64: imageBuffer.toString('base64'),
-    strength: isExplicit ? 0.95 : 0.75,
+    denoising_strength: isExplicit ? 0.95 : 0.75,
     width: 512, height: 768, image_num: 1, steps: 30,
     seed: -1, guidance_scale: 7, sampler_name: 'DPM++ 2M Karras',
   };
-  console.log('img2img submitting, model:', body.model_name, 'strength:', body.strength);
+  console.log('img2img submitting, model:', body.model_name, 'denoising_strength:', body.denoising_strength);
   const res = await axios.post('https://api.novita.ai/v3/async/img2img', body, {
     headers: authHeaders(), timeout: 30000,
   }).catch((e) => { throw new Error('NovitaAI img2img: ' + (e.response?.data ? JSON.stringify(e.response.data) : e.message)); });
