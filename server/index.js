@@ -16,7 +16,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 // Serve built React app in production
 const clientDist = path.join(__dirname, '../client/dist');
 app.use(express.static(clientDist));
-app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+app.get('/{*splat}', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on http://localhost:${PORT}`);
