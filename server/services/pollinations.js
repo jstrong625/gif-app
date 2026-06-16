@@ -1,25 +1,24 @@
 const axios = require('axios');
 
 const FRAME_SUFFIXES = [
-  'candid natural pose',
-  'slight smile, relaxed',
-  'expressive, dynamic pose',
+  'natural expression, candid moment',
+  'slight smile, relaxed pose',
+  'expressive look, dynamic pose',
   'intense gaze, dramatic lighting',
 ];
 
-const CONTENT_KEYWORDS = {
-  sfw: '',
-  adult: ', sensual, suggestive, tasteful nudity, artistic',
-  explicit: ', explicit, uncensored, NSFW, nude',
+const CONTENT_TAGS = {
+  sfw: 'tasteful, elegant, artistic',
+  adult: 'sensual, alluring, suggestive, tasteful nudity, artistic boudoir',
 };
 
 async function generateImage(prompt, frameIndex = 0, contentLevel = 'sfw') {
   const suffix = FRAME_SUFFIXES[frameIndex % FRAME_SUFFIXES.length];
-  const contentTag = CONTENT_KEYWORDS[contentLevel] || '';
-  const fullPrompt = `${prompt}, ${suffix}${contentTag}, high quality, detailed`;
+  const contentTag = CONTENT_TAGS[contentLevel] || CONTENT_TAGS.sfw;
+  const fullPrompt = `${prompt}, ${suffix}, ${contentTag}, photorealistic, high quality, sharp focus, professional photography, 8k`;
   const safe = contentLevel === 'sfw';
 
-  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=512&height=512&nologo=true&seed=${frameIndex + 1}&safe=${safe}&model=flux`;
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?width=768&height=768&nologo=true&seed=${Date.now() + frameIndex}&safe=${safe}&model=flux-realism&enhance=true`;
 
   const response = await axios.get(url, {
     responseType: 'arraybuffer',
